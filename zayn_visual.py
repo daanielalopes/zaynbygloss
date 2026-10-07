@@ -24,6 +24,10 @@ PRÉ-REQUISITOS (rodar UMA vez no seu computador, que tem internet):
 ------------------------------------------------------------------------------
 
 USO:
+    # TESTE DE HOJE: uma varredura única da home (sem loop), para conferir
+    # se o robô consegue ler as matérias do site no seu PC:
+    python3 zayn_visual.py testar --mostrar
+
     # Ler UMA matéria visualmente (navegador abre, lê, fecha):
     python3 zayn_visual.py url "https://hugogloss.uol.com.br/materia-x/"
 
@@ -132,6 +136,64 @@ def cmd_url(args: list[str]) -> int:
     return 0
 
 
+def cmd_testar(args: list[str]) -> int:
+    """UMA varredura da home AGORA (sem loop). Ideal para testar hoje."""
+    mostrar = "--mostrar" in args
+    limite = 15  # quantas matérias abrir no teste (para não demorar demais)
+    if "--limite" in args:
+        i = args.index("--limite")
+        try:
+            limite = int(args[i + 1])
+        except (IndexError, ValueError):
+            pass
+
+    print("🧪 MODO TESTE — uma varredura única da home do Hugo Gloss.")
+    print(f"   Lendo até {limite} matérias. (Hoje pode achar 0 músicas — normal.)")
+    print("   O importante é confirmar que o robô CONSEGUE LER as matérias.\n")
+
+    prog = carregar_progresso()
+    agora = datetime.now().strftime("%H:%M:%S")
+    try:
+        _, links = ler_pagina_visual(SITE_BASE, mostrar=mostrar)
+    except Exception as exc:  # noqa: BLE001
+        print(f"❌ Não consegui abrir a home ({exc}).")
+        print("   Verifique sua internet e se o Playwright foi instalado:")
+        print("     pip install -r requirements.txt && playwright install chromium")
+        return 2
+
+    materias = links_de_materias("".join(f'<a href="{l}"></a>' for l in links))
+    print(f"[{agora}] Encontrei {len(materias)} links de matérias na home.")
+    if not materias:
+        print("   (Nenhum link de matéria reconhecido — o site pode ter mudado o layout.)")
+        return 0
+
+    lidas_ok = 0
+    com_musica = 0
+    prog.setdefault("materias_vistas", {})
+    for idx, url in enumerate(materias[:limite], 1):
+        try:
+            texto, _ = ler_pagina_visual(url, mostrar=mostrar)
+            lidas_ok += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"   {idx}. ⚠️  falhou ao ler: {url}  ({exc})")
+            continue
+        prog["materias_vistas"][url] = agora
+        antes = len(prog.get("sequencia", []))
+        processar_texto(prog, texto, origem=f"teste: {url}", verbose=True)
+        depois = len(prog.get("sequencia", []))
+        marca = "🎵 TEM MÚSICA!" if depois > antes else "— sem música"
+        if depois > antes:
+            com_musica += 1
+        print(f"   {idx}. {marca}  {url}")
+
+    salvar_progresso(prog)
+    print(f"\n✅ Teste concluído: {lidas_ok}/{min(limite, len(materias))} matérias lidas com sucesso.")
+    print(f"   Matérias com música detectada: {com_musica}")
+    print("   → Se as matérias foram LIDAS sem erro, o robô está pronto para o dia 8. 🎯")
+    imprimir_status(prog)
+    return 0
+
+
 def cmd_vigiar(args: list[str]) -> int:
     mostrar = "--mostrar" in args
     args = [a for a in args if a != "--mostrar"]
@@ -194,7 +256,7 @@ def cmd_vigiar(args: list[str]) -> int:
     return 0
 
 
-COMANDOS = {"url": cmd_url, "vigiar": cmd_vigiar}
+COMANDOS = {"testar": cmd_testar, "url": cmd_url, "vigiar": cmd_vigiar}
 
 
 def main(argv: list[str]) -> int:

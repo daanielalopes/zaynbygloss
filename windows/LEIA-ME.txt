@@ -1,0 +1,28 @@
+==================================================================
+  ZAYN BY GLOSS - GUIA RAPIDO PARA WINDOWS (so dar 2 cliques)
+==================================================================
+
+ORDEM DE USO:
+
+  1) 1-INSTALAR.bat
+     Rode UMA vez. Instala o navegador que o robo usa.
+     (Precisa ter o Python instalado - python.org/downloads,
+      marcando "Add Python to PATH".)
+
+  2) 2-TESTAR-HOJE.bat
+     Teste de hoje. Abre o navegador e le as materias do site.
+     Hoje pode achar 0 musicas (normal) - serve so pra confirmar
+     que o robo consegue LER o site no seu computador.
+
+  3) 3-VIGIAR-DIA-8.bat
+     NO DIA DO CONCURSO (dia 8): rode este e DEIXE A JANELA ABERTA
+     o dia todo. Ele vigia o site, acha as hashtags das musicas e
+     TOCA UM SOM a cada uma (e um alerta especial quando achar as 6).
+
+------------------------------------------------------------------
+DICAS:
+  - Deixe o VOLUME do PC ligado para ouvir os alertas.
+  - Para parar a vigilancia: feche a janela ou aperte Ctrl + C.
+  - Quando achar as 6, o robo mostra a ORDEM certa para o formulario
+    do Canal do WhatsApp do Gloss. So envie DEPOIS da 6a musica sair!
+==================================================================
