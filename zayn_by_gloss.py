@@ -47,6 +47,13 @@ import re
 import sys
 import time
 import unicodedata
+
+# Garante que emojis/acentos sejam impressos sem erro no terminal do Windows (cp1252).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 from datetime import datetime
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
@@ -100,12 +107,16 @@ HASHTAGS_IGNORAR = {
 }
 
 
-def achar_musicas_em_texto(texto: str) -> tuple[list[str], list[str]]:
+def achar_musicas_em_texto(texto: str, sem_hashtag: bool = False) -> tuple[list[str], list[str]]:
     """
     Procura hashtags no texto. Retorna duas listas (na ordem de aparição, sem repetir):
       - reconhecidas: nomes OFICIAIS das músicas do Zayn que bateram com o catálogo.
       - suspeitas:    hashtags que NÃO bateram com o catálogo nem são genéricas
                       (rede de segurança: pode ser uma música que não cadastrei).
+
+    sem_hashtag=True: além das hashtags, procura os TÍTULOS do catálogo escritos
+    como texto comum (sem #). Útil para testar com matérias que só citam o nome.
+    ATENÇÃO: pode gerar falsos positivos com títulos de uma palavra muito comum.
     """
     reconhecidas: list[str] = []
     suspeitas: list[str] = []
@@ -121,6 +132,30 @@ def achar_musicas_em_texto(texto: str) -> tuple[list[str], list[str]]:
             etiqueta = "#" + bruto
             if etiqueta not in suspeitas:
                 suspeitas.append(etiqueta)
+
+    if sem_hashtag:
+        # Busca títulos do catálogo escritos como texto comum, na ordem em que
+        # aparecem no texto. Monta uma lista (posição, oficial) e ordena por posição.
+        texto_norm = normalizar(texto)  # minúsculas, sem acento, só letras+números
+        achados: list[tuple[int, str]] = []
+        termos: list[tuple[str, str]] = []  # (chave_normalizada, nome_oficial)
+        for m in MUSICAS:
+            termos.append((normalizar(m["oficial"]), m["oficial"]))
+            for alias in m.get("aliases", []):
+                termos.append((normalizar(alias), m["oficial"]))
+        # Evita falsos positivos: só considera títulos "distintos" (>= 7 chars
+        # normalizados, ou seja, nomes longos/compostos). Isso descarta
+        # palavras curtas e comuns como "she", "blue", "drunk", "truth".
+        for chave, oficial in termos:
+            if len(chave) < 7:
+                continue
+            pos = texto_norm.find(chave)
+            if pos != -1 and oficial not in reconhecidas:
+                achados.append((pos, oficial))
+        for _pos, oficial in sorted(achados):
+            if oficial not in reconhecidas:
+                reconhecidas.append(oficial)
+
     return reconhecidas, suspeitas
 
 
@@ -330,9 +365,35 @@ def _notificar_email_completo(prog: dict) -> None:
 # ---------------------------------------------------------------------------
 # Processar uma matéria (texto já extraído)
 # ---------------------------------------------------------------------------
+def extrair_data_publicacao(texto: str) -> str | None:
+    """
+    Extrai a data de publicação da matéria no formato DD/MM/AAAA.
+    O site do Hugo Gloss mostra 'Publicado em DD/MM/AAAA às HH:MM'.
+    Retorna a data como string 'DD/MM/AAAA' ou None se não encontrar.
+    """
+    m = re.search(r"[Pp]ublicad[oa]\s+em\s+(\d{2}/\d{2}/\d{4})", texto)
+    if m:
+        return m.group(1)
+    # fallback: qualquer data DD/MM/AAAA logo após a palavra "Publicado"
+    m = re.search(r"(\d{2}/\d{2}/\d{4})", texto)
+    return m.group(1) if m else None
+
+
 def processar_texto(prog: dict, texto: str, origem: str, verbose: bool = True,
-                    link: str | None = None) -> int:
-    reconhecidas, suspeitas = achar_musicas_em_texto(texto)
+                    link: str | None = None, sem_hashtag: bool = False,
+                    data_alvo: str | None = None) -> int:
+    # Filtro por DATA: se data_alvo foi definida, só processa matérias publicadas
+    # NESSA data (ex.: "08/10/2026"). Ignora matérias antigas que ainda aparecem
+    # na home. Se não achar data na página, por segurança NÃO processa quando há
+    # data_alvo (evita contar matérias sem data confirmada).
+    if data_alvo:
+        data_pub = extrair_data_publicacao(texto)
+        if data_pub != data_alvo:
+            if verbose:
+                motivo = f"data {data_pub}" if data_pub else "sem data detectada"
+                print(f"  ⏭️  Ignorada ({motivo} ≠ alvo {data_alvo}): {link or origem}")
+            return 0
+    reconhecidas, suspeitas = achar_musicas_em_texto(texto, sem_hashtag=sem_hashtag)
     novas = 0
     for musica in reconhecidas:
         if registrar_descoberta(prog, musica, origem):
@@ -359,6 +420,26 @@ def processar_texto(prog: dict, texto: str, origem: str, verbose: bool = True,
 # ---------------------------------------------------------------------------
 # Descobrir links de matérias na home
 # ---------------------------------------------------------------------------
+# Padrões de URL que NÃO são matérias do jogo e devem ser ignorados:
+#  - a própria matéria de REGRAS do concurso (cita títulos como exemplo, sem #);
+#  - páginas de categoria/tag/institucionais.
+# Isso evita falsos positivos (ex.: "PILLOWTALK", "Dusk Till Dawn" citados nas
+# regras) que bagunçariam a ORDEM oficial das 6 músicas.
+PADROES_IGNORAR_URL = (
+    "/concurso-cultural/",
+    "/category/",
+    "/tag/",
+    "/sobre",
+    "/contato",
+)
+
+
+def _ignorar_url(url: str) -> bool:
+    """True se a URL for uma página que não deve ser lida como matéria do jogo."""
+    alvo = url.lower()
+    return any(p in alvo for p in PADROES_IGNORAR_URL)
+
+
 def links_de_materias(home_html: str) -> list[str]:
     _, links = extrair_texto_e_links(home_html)
     materias = []
@@ -368,7 +449,10 @@ def links_de_materias(home_html: str) -> list[str]:
         if href.startswith(SITE_BASE) and href.rstrip("/") != SITE_BASE.rstrip("/"):
             # heurística: matérias costumam ter um "slug" após o domínio
             if re.search(r"/[a-z0-9\-]{6,}/?$", href):
-                materias.append(href.split("?")[0])
+                url_limpa = href.split("?")[0]
+                if _ignorar_url(url_limpa):
+                    continue
+                materias.append(url_limpa)
     # remove duplicados preservando ordem
     vistos = set()
     unicos = []
@@ -395,8 +479,11 @@ def cmd_texto(args: list[str]) -> int:
 
 
 def cmd_url(args: list[str]) -> int:
+    sem_hashtag = "--sem-hashtag" in args
+    args = [a for a in args if a != "--sem-hashtag"]
     if not args:
         print("Uso: python3 zayn_by_gloss.py url \"https://hugogloss.uol.com.br/materia/\"")
+        print("     (opcional) --sem-hashtag  → detecta títulos no texto mesmo sem #")
         return 1
     url = args[0]
     prog = carregar_progresso()
@@ -411,7 +498,7 @@ def cmd_url(args: list[str]) -> int:
     if url in prog["materias_vistas"]:
         print("(Esta matéria já havia sido processada antes — checando mesmo assim.)")
     prog["materias_vistas"][url] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    processar_texto(prog, texto, origem=url)
+    processar_texto(prog, texto, origem=url, link=url, sem_hashtag=sem_hashtag)
     salvar_progresso(prog)
     imprimir_status(prog)
     return 0

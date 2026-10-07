@@ -60,6 +60,13 @@ import sys
 import time
 from datetime import datetime
 
+# Garante que emojis/acentos sejam impressos sem erro no terminal do Windows (cp1252).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Reaproveita toda a lógica já testada do robô principal:
 from zayn_by_gloss import (
     SITE_BASE,
@@ -195,9 +202,10 @@ def ler_varias_rapido(urls, mostrar: bool = False, espera_ms: int = 800,
 
 def cmd_url(args: list[str]) -> int:
     mostrar = "--mostrar" in args
-    args = [a for a in args if a != "--mostrar"]
+    sem_hashtag = "--sem-hashtag" in args
+    args = [a for a in args if a not in ("--mostrar", "--sem-hashtag")]
     if not args:
-        print('Uso: python3 zayn_visual.py url "https://hugogloss.uol.com.br/materia/" [--mostrar]')
+        print('Uso: python3 zayn_visual.py url "https://hugogloss.uol.com.br/materia/" [--mostrar] [--sem-hashtag]')
         return 1
     url = args[0]
     prog = carregar_progresso()
@@ -210,9 +218,10 @@ def cmd_url(args: list[str]) -> int:
         print('    python3 zayn_by_gloss.py musica "Nome Da Musica"')
         return 2
     prog.setdefault("materias_vistas", {})[url] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    novas = processar_texto(prog, texto, origem=f"visual: {url}", link=url)
+    novas = processar_texto(prog, texto, origem=f"visual: {url}", link=url,
+                            sem_hashtag=sem_hashtag)
     if not novas:
-        print("  (Nenhuma hashtag de música reconhecida nesta matéria.)")
+        print("  (Nenhuma música reconhecida nesta matéria.)")
     salvar_progresso(prog)
     imprimir_status(prog)
     return 0
@@ -318,7 +327,7 @@ def cmd_testar(args: list[str]) -> int:
 def cmd_vigiar(args: list[str]) -> int:
     mostrar = "--mostrar" in args
     args = [a for a in args if a != "--mostrar"]
-    intervalo = 600
+    intervalo = 60  # 1 minuto por padrão
     if "--intervalo" in args:
         i = args.index("--intervalo")
         try:
@@ -327,9 +336,28 @@ def cmd_vigiar(args: list[str]) -> int:
             print("--intervalo precisa de um número em segundos.")
             return 1
 
+    # DATA-ALVO: por padrão, só processa matérias publicadas em 08/10/2026
+    # (o dia do concurso). Use --data DD/MM/AAAA para mudar, ou --todas-datas
+    # para desligar o filtro.
+    data_alvo: str | None = "08/10/2026"
+    if "--todas-datas" in args:
+        data_alvo = None
+        args = [a for a in args if a != "--todas-datas"]
+    if "--data" in args:
+        i = args.index("--data")
+        try:
+            data_alvo = args[i + 1]
+        except IndexError:
+            print("--data precisa de uma data no formato DD/MM/AAAA. Ex: --data 08/10/2026")
+            return 1
+
     print("👁️  MODO VIGIA VISUAL ativado (navegador real).")
     print(f"   A cada {intervalo}s: lê a HOME, abre as matérias NOVAS (em paralelo)")
     print("   e procura as hashtags dentro de cada post. Ctrl+C para parar.")
+    if data_alvo:
+        print(f"   📅 Só conta matérias publicadas em {data_alvo} (ignora as antigas).")
+    else:
+        print("   📅 Filtro de data DESLIGADO (lê matérias de qualquer dia).")
     if mostrar:
         print("   Navegador VISÍVEL: você vai ver o robô percorrendo as matérias.\n")
     else:
@@ -349,7 +377,9 @@ def cmd_vigiar(args: list[str]) -> int:
             print(f"[{agora}] {len(materias)} matérias na home. Verificando novas...")
             prog.setdefault("materias_vistas", {})
 
-            # também procura hashtags no próprio texto da home (caso apareçam lá)
+            # A home não tem UMA data de publicação; o filtro de data é aplicado
+            # só nas matérias (abaixo). Aqui procuramos hashtags que, por acaso,
+            # já apareçam no texto da home.
             novas_total = processar_texto(prog, texto_home, origem=f"home: {SITE_BASE}",
                                           link=SITE_BASE, verbose=True)
 
@@ -363,7 +393,8 @@ def cmd_vigiar(args: list[str]) -> int:
                     if not texto:
                         continue
                     novas_total += processar_texto(prog, texto, origem=f"visual: {url}",
-                                                   link=url, verbose=True)
+                                                   link=url, verbose=True,
+                                                   data_alvo=data_alvo)
             salvar_progresso(prog)
             if novas_total:
                 imprimir_status(prog)
