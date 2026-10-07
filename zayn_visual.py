@@ -327,7 +327,7 @@ def cmd_testar(args: list[str]) -> int:
 def cmd_vigiar(args: list[str]) -> int:
     mostrar = "--mostrar" in args
     args = [a for a in args if a != "--mostrar"]
-    intervalo = 60  # 1 minuto por padrão
+    intervalo = 30  # 30 segundos por padrão
     if "--intervalo" in args:
         i = args.index("--intervalo")
         try:
@@ -335,6 +335,12 @@ def cmd_vigiar(args: list[str]) -> int:
         except (IndexError, ValueError):
             print("--intervalo precisa de um número em segundos.")
             return 1
+    # Mínimo de segurança: ciclos muito curtos não dão tempo de abrir o
+    # navegador e ler as matérias, e podem fazer o site te bloquear por
+    # excesso de acessos. 15s é o piso recomendado.
+    if intervalo < 15:
+        print(f"⚠️  Intervalo {intervalo}s é muito baixo; usando o mínimo seguro de 15s.")
+        intervalo = 15
 
     # DATA-ALVO: por padrão, só processa matérias publicadas em 08/10/2026
     # (o dia do concurso). Use --data DD/MM/AAAA para mudar, ou --todas-datas
