@@ -27,10 +27,15 @@ USO:
     # TESTE DE HOJE: uma varredura única da home (sem loop), para conferir
     # se o robô consegue ler as matérias do site no seu PC.
     # É RÁPIDO por padrão (abas em paralelo, sem baixar imagens):
-    python3 zayn_visual.py testar               # rápido, navegador escondido
-    python3 zayn_visual.py testar --mostrar     # rápido, navegador visível
-    python3 zayn_visual.py testar --limite 25   # ler mais matérias
+    python3 zayn_visual.py testar               # home + abre as matérias (recomendado)
+    python3 zayn_visual.py testar --mostrar     # idem, navegador visível
+    python3 zayn_visual.py testar --limite 25   # abrir mais matérias
+    python3 zayn_visual.py testar --so-home     # ler APENAS a home (não abre posts)
     python3 zayn_visual.py testar --devagar     # modo antigo (1 por vez)
+
+    # Obs.: as regras do concurso dizem que as hashtags ficam "no meio das
+    # MATÉRIAS", por isso o padrão é abrir os posts. --so-home é mais rápido,
+    # mas pode não encontrar hashtags que só aparecem dentro da matéria.
 
     # Ler UMA matéria visualmente (navegador abre, lê, fecha):
     python3 zayn_visual.py url "https://hugogloss.uol.com.br/materia-x/"
@@ -228,24 +233,38 @@ def cmd_testar(args: list[str]) -> int:
         except (IndexError, ValueError):
             pass
 
-    print("🧪 MODO TESTE — uma varredura única da home do Hugo Gloss.")
-    print(f"   Lendo até {limite} matérias. (Hoje pode achar 0 músicas — normal.)")
-    print("   O importante é confirmar que o robô CONSEGUE LER as matérias.\n")
+    # As regras dizem que as hashtags ficam "no meio das MATÉRIAS", então o
+    # padrão é abrir as matérias. Use --so-home para ler apenas a home.
+    so_home = "--so-home" in args
 
+    print("🧪 MODO TESTE — varredura única a partir da home do Hugo Gloss.")
     prog = carregar_progresso()
     agora = datetime.now().strftime("%H:%M:%S")
     try:
-        _, links = ler_pagina_visual(SITE_BASE, mostrar=mostrar)
+        texto_home, links = ler_pagina_visual(SITE_BASE, mostrar=mostrar)
     except Exception as exc:  # noqa: BLE001
         print(f"❌ Não consegui abrir a home ({exc}).")
         print("   Verifique sua internet e se o Playwright foi instalado:")
         print("     pip install -r requirements.txt && playwright install chromium")
         return 2
 
+    # Também procura hashtags no próprio texto da home (caso apareçam lá)
+    processar_texto(prog, texto_home, origem=f"home: {SITE_BASE}",
+                    verbose=True, link=SITE_BASE)
+
+    if so_home:
+        salvar_progresso(prog)
+        print("   (Modo --so-home: li apenas a home, não abri as matérias.)")
+        print("   ⚠️  Atenção: as regras dizem que as hashtags ficam no MEIO das")
+        print("       matérias, então o normal é precisar ABRIR os posts.")
+        imprimir_status(prog)
+        return 0
+
     materias = links_de_materias("".join(f'<a href="{l}"></a>' for l in links))
     print(f"[{agora}] Encontrei {len(materias)} links de matérias na home.")
     if not materias:
         print("   (Nenhum link de matéria reconhecido — o site pode ter mudado o layout.)")
+        imprimir_status(prog)
         return 0
 
     lidas_ok = 0
