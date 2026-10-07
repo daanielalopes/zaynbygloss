@@ -125,11 +125,15 @@ def enviar_email_completo(sequencia: list[dict]) -> bool:
         return False
     linhas = [f"{i+1}. {item['musica']}  —  {item.get('origem', '')}"
               for i, item in enumerate(sequencia)]
+    # Ordem limpa para copiar no formulário: UMA música por linha.
+    ordem_para_copiar = "\n".join(item["musica"] for item in sequencia)
     corpo = (
         "🎉 TODAS AS MÚSICAS FORAM ENCONTRADAS!\n\n"
         + "\n".join(linhas)
-        + "\n\nOrdem para o formulário:\n   "
-        + "  ->  ".join(item["musica"] for item in sequencia)
+        + "\n\n==============================\n"
+        + "ORDEM PARA O FORMULÁRIO (copie):\n"
+        + "==============================\n"
+        + ordem_para_copiar
         + "\n\nCorra para o Canal do WhatsApp do Gloss e preencha o formulário!\n"
         "— Robô Zayn By Gloss"
     )
