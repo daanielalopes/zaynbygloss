@@ -128,7 +128,7 @@ def cmd_url(args: list[str]) -> int:
         print('    python3 zayn_by_gloss.py musica "Nome Da Musica"')
         return 2
     prog.setdefault("materias_vistas", {})[url] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    novas = processar_texto(prog, texto, origem=f"visual: {url}")
+    novas = processar_texto(prog, texto, origem=f"visual: {url}", link=url)
     if not novas:
         print("  (Nenhuma hashtag de música reconhecida nesta matéria.)")
     salvar_progresso(prog)
@@ -179,7 +179,7 @@ def cmd_testar(args: list[str]) -> int:
             continue
         prog["materias_vistas"][url] = agora
         antes = len(prog.get("sequencia", []))
-        processar_texto(prog, texto, origem=f"teste: {url}", verbose=True)
+        processar_texto(prog, texto, origem=f"teste: {url}", verbose=True, link=url)
         depois = len(prog.get("sequencia", []))
         marca = "🎵 TEM MÚSICA!" if depois > antes else "— sem música"
         if depois > antes:
@@ -234,7 +234,7 @@ def cmd_vigiar(args: list[str]) -> int:
                 except Exception:
                     continue
                 prog["materias_vistas"][url] = agora
-                novas_total += processar_texto(prog, texto, origem=f"visual: {url}")
+                novas_total += processar_texto(prog, texto, origem=f"visual: {url}", link=url)
             salvar_progresso(prog)
             if novas_total:
                 imprimir_status(prog)

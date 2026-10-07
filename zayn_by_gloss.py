@@ -275,6 +275,13 @@ def imprimir_status(prog: dict) -> None:
         print("   (Só envie DEPOIS que a 6ª música tiver sido publicada.)")
         print("   🔊 (tocando alerta sonoro)")
         tocar_som("completo")
+        if not prog.get("email_final_enviado"):
+            _notificar_email_completo(prog)
+            prog["email_final_enviado"] = True
+            try:
+                salvar_progresso(prog)
+            except Exception:
+                pass
     else:
         faltam = TOTAL_MUSICAS_CONCURSO - len(seq)
         print(f"\n⏳ Faltam {faltam} música(s). Continue vigiando.")
@@ -287,18 +294,56 @@ def imprimir_status(prog: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Notificação por e-mail (opcional — só se configurado)
+# ---------------------------------------------------------------------------
+def _limpar_link(origem_ou_link: str) -> str:
+    """Remove prefixos como 'visual: ' / 'teste: ' deixando só o URL (se houver)."""
+    for p in ("visual: ", "teste: "):
+        if origem_ou_link.startswith(p):
+            return origem_ou_link[len(p):]
+    return origem_ou_link
+
+
+def _notificar_email_musica(musica: str, link: str, ordem: int) -> None:
+    try:
+        import notificador_email as mail
+    except Exception:
+        return
+    if not mail.email_configurado():
+        return
+    enviado = mail.enviar_email_musica(musica, _limpar_link(link), ordem, TOTAL_MUSICAS_CONCURSO)
+    if enviado:
+        print(f"  📧 E-mail enviado sobre '{musica}'.")
+
+
+def _notificar_email_completo(prog: dict) -> None:
+    try:
+        import notificador_email as mail
+    except Exception:
+        return
+    if not mail.email_configurado():
+        return
+    if mail.enviar_email_completo(prog["sequencia"][:TOTAL_MUSICAS_CONCURSO]):
+        print("  📧 E-mail final (as 6 na ordem) enviado.")
+
+
+# ---------------------------------------------------------------------------
 # Processar uma matéria (texto já extraído)
 # ---------------------------------------------------------------------------
-def processar_texto(prog: dict, texto: str, origem: str, verbose: bool = True) -> int:
+def processar_texto(prog: dict, texto: str, origem: str, verbose: bool = True,
+                    link: str | None = None) -> int:
     reconhecidas, suspeitas = achar_musicas_em_texto(texto)
     novas = 0
     for musica in reconhecidas:
         if registrar_descoberta(prog, musica, origem):
             novas += 1
+            ordem = len(prog["sequencia"])
             if verbose:
                 icone = " 🔊" if SOM_LIGADO else ""
-                print(f"  🎵 NOVA música encontrada: #{musica}  (ordem {len(prog['sequencia'])}){icone}")
+                print(f"  🎵 NOVA música encontrada: #{musica}  (ordem {ordem}){icone}")
                 tocar_som("nova")
+            # 📧 Notifica por e-mail (se configurado): nome da música + link do post
+            _notificar_email_musica(musica, link or origem, ordem)
     if suspeitas and verbose:
         print("  🔎 Rede de segurança — hashtags que NÃO estão no meu catálogo:")
         for s in suspeitas:

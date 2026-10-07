@@ -20,6 +20,22 @@ ORDEM DE USO:
      TOCA UM SOM a cada uma (e um alerta especial quando achar as 6).
 
 ------------------------------------------------------------------
+E-MAIL AUTOMATICO (opcional):
+  O robo pode te enviar um E-MAIL assim que achar cada musica,
+  dizendo o NOME da musica e o LINK do post.
+
+  Para ativar:
+    1) Copie  email_config.exemplo.json  para  email_config.json
+    2) Abra o email_config.json e preencha:
+         remetente     = seu e-mail (ex: Gmail)
+         senha_app     = "Senha de app" de 16 letras (NAO e sua senha!)
+                         gere em: myaccount.google.com/apppasswords
+                         (precisa ter verificacao em 2 etapas ativada)
+         destinatario  = para onde quer receber os avisos
+    3) Teste com  4-TESTAR-EMAIL.bat
+  Se nao configurar, o robo funciona normal, apenas sem e-mail.
+
+------------------------------------------------------------------
 DICAS:
   - Deixe o VOLUME do PC ligado para ouvir os alertas.
   - Para parar a vigilancia: feche a janela ou aperte Ctrl + C.

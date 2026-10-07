@@ -31,11 +31,21 @@ python3 zayn_by_gloss.py status         # ver o resultado parcial
 
 Quando achar as 6, ele mostra a **sequência final** pronta para o formulário.
 
+## Notificação por e-mail (opcional)
+
+O robô pode **enviar um e-mail** assim que encontrar cada música, informando o
+**nome da música** e o **link do post**. Para ativar, copie
+`email_config.exemplo.json` para `email_config.json` e preencha com seus dados
+(use uma *Senha de app* do Gmail — veja o cabeçalho de `notificador_email.py`).
+Sem configuração, o robô funciona normal, apenas sem e-mail.
+
 ## Arquivos
 
 - `zayn_visual.py` — **robô visual** (navegador real, lê a tela mesmo com cópia bloqueada).
 - `zayn_by_gloss.py` — robô base (vigiar / url / texto / musica / status / reset).
 - `musicas_zayn.py` — discografia do Zayn com variações de escrita das hashtags.
+- `notificador_email.py` — envio de e-mail (nome da música + link do post).
+- `email_config.exemplo.json` — modelo de configuração do e-mail.
 - `COMO_USAR_AMANHA.md` — passo a passo para o dia do concurso.
 
 ## Observação

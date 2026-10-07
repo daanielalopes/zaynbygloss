@@ -1,3 +1,6 @@
 progresso.json
 __pycache__/
 *.pyc
+
+# NUNCA versionar as credenciais de e-mail (contém senha de app)
+email_config.json

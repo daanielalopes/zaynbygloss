@@ -1,0 +1,8 @@
+{
+  "ativo": true,
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "remetente": "SEU_EMAIL@gmail.com",
+  "senha_app": "xxxx xxxx xxxx xxxx",
+  "destinatario": "PARA_ONDE_ENVIAR@gmail.com"
+}
