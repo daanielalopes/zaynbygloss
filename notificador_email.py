@@ -37,7 +37,15 @@ import json
 import os
 import smtplib
 import ssl
+import sys
 from email.message import EmailMessage
+
+# Garante que emojis/acentos sejam impressos sem erro no terminal do Windows (cp1252).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 _CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_config.json")
 
