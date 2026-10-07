@@ -35,6 +35,16 @@ python3 zayn_visual.py url "<link-da-materia>"   # lê uma matéria específica
 - `--mostrar` abre o navegador na sua frente (você vê o robô trabalhando).
 - Sem `--mostrar`, ele roda escondido (headless), igual.
 
+> **Velocidade / navegador:** o robô usa o **Chromium** (o motor mais rápido e
+> estável do Playwright para esta tarefa). A leitura é acelerada **lendo várias
+> matérias em paralelo e sem baixar imagens** — por isso o teste fica bem rápido.
+> Para testar hoje:
+> ```bash
+> python3 zayn_visual.py testar               # rápido (padrão)
+> python3 zayn_visual.py testar --limite 25   # ler mais matérias
+> python3 zayn_visual.py testar --devagar     # modo antigo (1 por vez)
+> ```
+
 #### 🅰️ Modo automático simples (sem navegador) — mais leve
 ```bash
 python3 zayn_by_gloss.py vigiar

@@ -11,7 +11,7 @@ echo   que ele consegue LER o site no seu PC.
 echo ============================================================
 echo.
 python zayn_by_gloss.py reset
-python zayn_visual.py testar --mostrar
+python zayn_visual.py testar --mostrar --limite 20
 echo.
 echo ============================================================
 echo   Teste finalizado. Veja acima quantas materias foram lidas.

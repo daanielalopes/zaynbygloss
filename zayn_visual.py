@@ -25,8 +25,12 @@ PRÉ-REQUISITOS (rodar UMA vez no seu computador, que tem internet):
 
 USO:
     # TESTE DE HOJE: uma varredura única da home (sem loop), para conferir
-    # se o robô consegue ler as matérias do site no seu PC:
-    python3 zayn_visual.py testar --mostrar
+    # se o robô consegue ler as matérias do site no seu PC.
+    # É RÁPIDO por padrão (abas em paralelo, sem baixar imagens):
+    python3 zayn_visual.py testar               # rápido, navegador escondido
+    python3 zayn_visual.py testar --mostrar     # rápido, navegador visível
+    python3 zayn_visual.py testar --limite 25   # ler mais matérias
+    python3 zayn_visual.py testar --devagar     # modo antigo (1 por vez)
 
     # Ler UMA matéria visualmente (navegador abre, lê, fecha):
     python3 zayn_visual.py url "https://hugogloss.uol.com.br/materia-x/"
@@ -111,6 +115,79 @@ def ler_pagina_visual(page_url: str, mostrar: bool = False, espera_ms: int = 250
         return texto, links
 
 
+def ler_varias_rapido(urls, mostrar: bool = False, espera_ms: int = 800,
+                      paralelo: int = 4):
+    """
+    Lê VÁRIAS páginas rápido: abre UM navegador só e processa em lotes de
+    `paralelo` abas simultâneas. Devolve dict {url: texto}.
+
+    Muito mais rápido que abrir/fechar um navegador por página, porque:
+      - o Chromium é iniciado uma única vez;
+      - várias abas carregam ao mesmo tempo;
+      - a espera por página é menor (padrão 800ms).
+    Para desligar imagens/fontes e acelerar ainda mais, bloqueia esses recursos.
+    """
+    from playwright.sync_api import sync_playwright
+
+    resultados: dict[str, str] = {}
+    with sync_playwright() as p:
+        navegador = p.chromium.launch(
+            headless=not mostrar,
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+        )
+        contexto = navegador.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"
+            ),
+            locale="pt-BR",
+        )
+        # Bloqueia imagens/mídia/fontes: não precisamos delas para ler o texto.
+        def _rota(route):
+            if route.request.resource_type in ("image", "media", "font"):
+                route.abort()
+            else:
+                route.continue_()
+        contexto.route("**/*", _rota)
+
+        def ler_uma(url: str) -> str:
+            page = contexto.new_page()
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(espera_ms)
+                return page.evaluate("() => document.body.innerText") or ""
+            except Exception:
+                return ""
+            finally:
+                page.close()
+
+        # processa em lotes (paralelo abas por vez)
+        for i in range(0, len(urls), paralelo):
+            lote = urls[i:i + paralelo]
+            paginas = []
+            for url in lote:
+                page = contexto.new_page()
+                paginas.append((url, page))
+            # dispara navegação de todas as abas do lote
+            for url, page in paginas:
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                except Exception:
+                    pass
+            # espera uma vez para o lote inteiro, depois coleta
+            if paginas:
+                paginas[0][1].wait_for_timeout(espera_ms)
+            for url, page in paginas:
+                try:
+                    resultados[url] = page.evaluate("() => document.body.innerText") or ""
+                except Exception:
+                    resultados[url] = ""
+                finally:
+                    page.close()
+        navegador.close()
+    return resultados
+
+
 def cmd_url(args: list[str]) -> int:
     mostrar = "--mostrar" in args
     args = [a for a in args if a != "--mostrar"]
@@ -137,7 +214,11 @@ def cmd_url(args: list[str]) -> int:
 
 
 def cmd_testar(args: list[str]) -> int:
-    """UMA varredura da home AGORA (sem loop). Ideal para testar hoje."""
+    """UMA varredura da home AGORA (sem loop). Ideal para testar hoje.
+
+    Rápido por padrão (abas em paralelo, sem imagens). Use --devagar para o
+    modo antigo (uma página por vez) e --limite N para ler mais/menos matérias.
+    """
     mostrar = "--mostrar" in args
     limite = 15  # quantas matérias abrir no teste (para não demorar demais)
     if "--limite" in args:
@@ -170,21 +251,42 @@ def cmd_testar(args: list[str]) -> int:
     lidas_ok = 0
     com_musica = 0
     prog.setdefault("materias_vistas", {})
-    for idx, url in enumerate(materias[:limite], 1):
-        try:
-            texto, _ = ler_pagina_visual(url, mostrar=mostrar)
+    alvos = materias[:limite]
+
+    devagar = "--devagar" in args
+    if devagar:
+        # modo antigo: uma página por vez (navegador abre/fecha a cada uma)
+        for idx, url in enumerate(alvos, 1):
+            try:
+                texto, _ = ler_pagina_visual(url, mostrar=mostrar)
+                lidas_ok += 1
+            except Exception as exc:  # noqa: BLE001
+                print(f"   {idx}. ⚠️  falhou ao ler: {url}  ({exc})")
+                continue
+            prog["materias_vistas"][url] = agora
+            antes = len(prog.get("sequencia", []))
+            processar_texto(prog, texto, origem=f"teste: {url}", verbose=True, link=url)
+            marca = "🎵 TEM MÚSICA!" if len(prog["sequencia"]) > antes else "— sem música"
+            if len(prog["sequencia"]) > antes:
+                com_musica += 1
+            print(f"   {idx}. {marca}  {url}")
+    else:
+        # ⚡ MODO RÁPIDO (padrão): um navegador só, abas em paralelo, sem imagens
+        print("   ⚡ Lendo em modo rápido (paralelo, sem imagens)...")
+        textos = ler_varias_rapido(alvos, mostrar=mostrar)
+        for idx, url in enumerate(alvos, 1):
+            texto = textos.get(url, "")
+            if not texto:
+                print(f"   {idx}. ⚠️  falhou ao ler: {url}")
+                continue
             lidas_ok += 1
-        except Exception as exc:  # noqa: BLE001
-            print(f"   {idx}. ⚠️  falhou ao ler: {url}  ({exc})")
-            continue
-        prog["materias_vistas"][url] = agora
-        antes = len(prog.get("sequencia", []))
-        processar_texto(prog, texto, origem=f"teste: {url}", verbose=True, link=url)
-        depois = len(prog.get("sequencia", []))
-        marca = "🎵 TEM MÚSICA!" if depois > antes else "— sem música"
-        if depois > antes:
-            com_musica += 1
-        print(f"   {idx}. {marca}  {url}")
+            prog["materias_vistas"][url] = agora
+            antes = len(prog.get("sequencia", []))
+            processar_texto(prog, texto, origem=f"teste: {url}", verbose=True, link=url)
+            marca = "🎵 TEM MÚSICA!" if len(prog["sequencia"]) > antes else "— sem música"
+            if len(prog["sequencia"]) > antes:
+                com_musica += 1
+            print(f"   {idx}. {marca}  {url}")
 
     salvar_progresso(prog)
     print(f"\n✅ Teste concluído: {lidas_ok}/{min(limite, len(materias))} matérias lidas com sucesso.")
