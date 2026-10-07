@@ -328,7 +328,8 @@ def cmd_vigiar(args: list[str]) -> int:
             return 1
 
     print("👁️  MODO VIGIA VISUAL ativado (navegador real).")
-    print(f"   Checando {SITE_BASE} a cada {intervalo}s. Ctrl+C para parar.")
+    print(f"   A cada {intervalo}s: lê a HOME, abre as matérias NOVAS (em paralelo)")
+    print("   e procura as hashtags dentro de cada post. Ctrl+C para parar.")
     if mostrar:
         print("   Navegador VISÍVEL: você vai ver o robô percorrendo as matérias.\n")
     else:
@@ -340,22 +341,29 @@ def cmd_vigiar(args: list[str]) -> int:
     while len(prog.get("sequencia", [])) < TOTAL_MUSICAS_CONCURSO:
         agora = datetime.now().strftime("%H:%M:%S")
         try:
-            _, links = ler_pagina_visual(SITE_BASE, mostrar=mostrar)
+            # 1) lê a HOME e extrai os links das matérias
+            texto_home, links = ler_pagina_visual(SITE_BASE, mostrar=mostrar)
             materias = links_de_materias(
                 "".join(f'<a href="{l}"></a>' for l in links)
             )
             print(f"[{agora}] {len(materias)} matérias na home. Verificando novas...")
-            novas_total = 0
             prog.setdefault("materias_vistas", {})
-            for url in materias:
-                if url in prog["materias_vistas"]:
-                    continue
-                try:
-                    texto, _ = ler_pagina_visual(url, mostrar=mostrar)
-                except Exception:
-                    continue
-                prog["materias_vistas"][url] = agora
-                novas_total += processar_texto(prog, texto, origem=f"visual: {url}", link=url)
+
+            # também procura hashtags no próprio texto da home (caso apareçam lá)
+            novas_total = processar_texto(prog, texto_home, origem=f"home: {SITE_BASE}",
+                                          link=SITE_BASE, verbose=True)
+
+            # 2) abre apenas as matérias AINDA NÃO VISTAS, em paralelo (rápido)
+            novas_urls = [u for u in materias if u not in prog["materias_vistas"]]
+            if novas_urls:
+                textos = ler_varias_rapido(novas_urls, mostrar=mostrar)
+                for url in novas_urls:
+                    prog["materias_vistas"][url] = agora
+                    texto = textos.get(url, "")
+                    if not texto:
+                        continue
+                    novas_total += processar_texto(prog, texto, origem=f"visual: {url}",
+                                                   link=url, verbose=True)
             salvar_progresso(prog)
             if novas_total:
                 imprimir_status(prog)
