@@ -71,6 +71,16 @@ Ele valida contra o catálogo e, se você errar a grafia, sugere a correção.
 python3 zayn_by_gloss.py status
 ```
 
+### 🔊 Alerta sonoro
+O robô **toca um som** a cada música nova encontrada e um alerta mais longo
+quando acha as 6 — assim você percebe mesmo sem olhar a tela.
+```bash
+python3 zayn_by_gloss.py --testar-som     # testa os sons agora
+python3 zayn_by_gloss.py vigiar --mudo    # desliga o som, se preferir
+```
+Funciona em Windows, macOS e Linux (usa o som do sistema; se não houver, usa o
+bipe do terminal — deixe o volume ligado).
+
 ### 4. Quando as 6 aparecerem
 O robô mostra a mensagem ✅ com a **sequência final**. Aí:
 1. Espere a **6ª música** ser publicada (regra do concurso).

@@ -28,6 +28,10 @@ registra a ORDEM. Ele tem dois modos:
   Zerar o progresso (começar do dia do zero):
       python3 zayn_by_gloss.py reset
 
+  SOM: toca um bipe a cada música nova e um alerta ao completar as 6.
+      python3 zayn_by_gloss.py --testar-som        # testa os sons agora
+      python3 zayn_by_gloss.py vigiar --mudo        # desliga o som
+
 Progresso é salvo em  progresso.json  (sobrevive a reinícios do robô).
 
 Observação importante: use este robô NO SEU COMPUTADOR, onde o site abre normal.
@@ -38,6 +42,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import re
 import sys
 import time
@@ -193,6 +198,63 @@ def registrar_descoberta(prog: dict, musica: str, origem: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Alerta sonoro (multiplataforma, sem dependências externas)
+# ---------------------------------------------------------------------------
+SOM_LIGADO = True  # vira False com a flag --mudo
+
+
+def _beep_terminal(vezes: int = 1) -> None:
+    """Toca o bipe do terminal (fallback universal)."""
+    for _ in range(vezes):
+        sys.stdout.write("\a")
+        sys.stdout.flush()
+        time.sleep(0.15)
+
+
+def tocar_som(tipo: str = "nova") -> None:
+    """
+    Toca um som. tipo:
+      - "nova"     → bipe curto quando acha uma música nova.
+      - "completo" → melodia/alerta mais longo quando acha as 6.
+    Tenta usar o som do SO; se não der, cai no bipe do terminal.
+    """
+    if not SOM_LIGADO:
+        return
+    sistema = platform.system()
+    try:
+        if sistema == "Windows":
+            import winsound  # type: ignore
+            if tipo == "completo":
+                for freq in (660, 880, 990, 1320):
+                    winsound.Beep(freq, 180)
+            else:
+                winsound.Beep(880, 150)
+            return
+        if sistema == "Darwin":  # macOS
+            som = ("/System/Library/Sounds/Hero.aiff" if tipo == "completo"
+                   else "/System/Library/Sounds/Ping.aiff")
+            if os.path.exists(som):
+                os.system(f"afplay {som} >/dev/null 2>&1 &")
+                return
+        else:  # Linux: tenta players comuns, senão bipe do terminal
+            for player, arg in (("paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"),
+                                ("aplay", None)):
+                if _tem_comando(player) and (arg is None or os.path.exists(arg)):
+                    if arg:
+                        os.system(f"{player} {arg} >/dev/null 2>&1 &")
+                        return
+    except Exception:
+        pass
+    # Fallback universal: bipe do terminal
+    _beep_terminal(4 if tipo == "completo" else 1)
+
+
+def _tem_comando(nome: str) -> bool:
+    from shutil import which
+    return which(nome) is not None
+
+
+# ---------------------------------------------------------------------------
 # Impressão de status
 # ---------------------------------------------------------------------------
 def imprimir_status(prog: dict) -> None:
@@ -211,6 +273,8 @@ def imprimir_status(prog: dict) -> None:
         print("   " + "  →  ".join(i["musica"] for i in seq[:TOTAL_MUSICAS_CONCURSO]))
         print("\n   ➜ Agora corra pro Canal do WhatsApp e preencha o formulário!")
         print("   (Só envie DEPOIS que a 6ª música tiver sido publicada.)")
+        print("   🔊 (tocando alerta sonoro)")
+        tocar_som("completo")
     else:
         faltam = TOTAL_MUSICAS_CONCURSO - len(seq)
         print(f"\n⏳ Faltam {faltam} música(s). Continue vigiando.")
@@ -232,7 +296,9 @@ def processar_texto(prog: dict, texto: str, origem: str, verbose: bool = True) -
         if registrar_descoberta(prog, musica, origem):
             novas += 1
             if verbose:
-                print(f"  🎵 NOVA música encontrada: #{musica}  (ordem {len(prog['sequencia'])})")
+                icone = " 🔊" if SOM_LIGADO else ""
+                print(f"  🎵 NOVA música encontrada: #{musica}  (ordem {len(prog['sequencia'])}){icone}")
+                tocar_som("nova")
     if suspeitas and verbose:
         print("  🔎 Rede de segurança — hashtags que NÃO estão no meu catálogo:")
         for s in suspeitas:
@@ -428,6 +494,16 @@ COMANDOS = {
 
 
 def main(argv: list[str]) -> int:
+    global SOM_LIGADO
+    # Flags globais
+    if "--mudo" in argv:
+        SOM_LIGADO = False
+        argv = [a for a in argv if a != "--mudo"]
+    if "--testar-som" in argv:
+        print("🔊 Testando som de 'música nova'..."); tocar_som("nova")
+        time.sleep(0.6)
+        print("🔊 Testando som de 'concurso completo'..."); tocar_som("completo")
+        return 0
     if not argv or argv[0] not in COMANDOS:
         print(__doc__)
         return 1
