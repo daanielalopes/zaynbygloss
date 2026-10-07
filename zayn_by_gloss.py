@@ -15,9 +15,12 @@ registra a ORDEM. Ele tem dois modos:
       python3 zayn_by_gloss.py vigiar
       python3 zayn_by_gloss.py vigiar --intervalo 300   # a cada 5 min
 
-  MODO MANUAL (plano B, à prova de bloqueio) → você cola link ou texto.
+  MODO MANUAL (plano B) → passe só o LINK (não precisa copiar o texto da página).
       python3 zayn_by_gloss.py url  "https://hugogloss.uol.com.br/materia-x/"
-      python3 zayn_by_gloss.py texto "...conteúdo da matéria com #PILLOWTALK..."
+
+  MODO À PROVA DE TUDO → o site bloqueia cópia (Ctrl+C/V) e acesso automático?
+      Basta LER a hashtag na tela e digitar o nome da música:
+      python3 zayn_by_gloss.py musica "Pillowtalk"
 
   Ver o resultado parcial a qualquer momento:
       python3 zayn_by_gloss.py status
@@ -303,6 +306,48 @@ def cmd_url(args: list[str]) -> int:
     return 0
 
 
+def _sugerir_parecidas(chave: str, limite: int = 3) -> list[str]:
+    """Sugere músicas do catálogo com nome parecido (para erros de digitação)."""
+    import difflib
+    nomes = sorted({m["oficial"] for m in MUSICAS})
+    chaves = {normalizar(n): n for n in nomes}
+    aprox = difflib.get_close_matches(chave, list(chaves.keys()), n=limite, cutoff=0.6)
+    return [chaves[a] for a in aprox]
+
+
+def cmd_musica(args: list[str]) -> int:
+    """Registra uma música que VOCÊ leu/digitou (à prova de bloqueio de cópia)."""
+    if not args:
+        print("Uso: python3 zayn_by_gloss.py musica \"Pillowtalk\"")
+        print("     (digite o título que você LEU na matéria — não precisa copiar nada)")
+        return 1
+    entrada = " ".join(args).lstrip("#")
+    chave = normalizar(entrada)
+    prog = carregar_progresso()
+
+    if chave in INDICE_MUSICAS:
+        oficial = INDICE_MUSICAS[chave]
+        if registrar_descoberta(prog, oficial, origem="digitada manualmente"):
+            print(f"  🎵 NOVA música registrada: {oficial}  (ordem {len(prog['sequencia'])})")
+        else:
+            print(f"  (A música '{oficial}' já estava na sequência — não duplicado.)")
+        salvar_progresso(prog)
+        imprimir_status(prog)
+        return 0
+
+    # Não bateu: ajuda com sugestões
+    print(f"⚠️  '{entrada}' não bateu com nenhuma música do catálogo.")
+    sugestoes = _sugerir_parecidas(chave)
+    if sugestoes:
+        print("    Você quis dizer uma destas?")
+        for s in sugestoes:
+            print(f"      • {s}   →   python3 zayn_by_gloss.py musica \"{s}\"")
+    else:
+        print("    Confira a grafia. Se for mesmo uma música do Zayn que não está")
+        print("    no catálogo, me avise para eu adicioná-la.")
+    return 2
+
+
 def cmd_status(_args: list[str]) -> int:
     imprimir_status(carregar_progresso())
     return 0
@@ -376,6 +421,7 @@ COMANDOS = {
     "vigiar": cmd_vigiar,
     "url": cmd_url,
     "texto": cmd_texto,
+    "musica": cmd_musica,
     "status": cmd_status,
     "reset": cmd_reset,
 }

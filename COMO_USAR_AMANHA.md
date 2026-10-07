@@ -17,7 +17,25 @@ python3 zayn_by_gloss.py reset
 
 ### 2. Escolha um modo
 
-#### 🅰️ Modo automático (robô vigia o site sozinho) — tente este primeiro
+#### 👁️ Modo VISUAL (recomendado) — lê a tela como um humano, mesmo com cópia bloqueada
+O Hugo Gloss bloqueia copiar texto (Ctrl+C/V). Este modo abre um **navegador de
+verdade**, deixa a página carregar como você vê, e **lê o texto renderizado** —
+sem depender de você copiar nada.
+
+Instale uma vez (precisa de internet, no seu PC):
+```bash
+pip install playwright
+playwright install chromium
+```
+Depois:
+```bash
+python3 zayn_visual.py vigiar --mostrar      # navegador VISÍVEL, vigia a home
+python3 zayn_visual.py url "<link-da-materia>"   # lê uma matéria específica
+```
+- `--mostrar` abre o navegador na sua frente (você vê o robô trabalhando).
+- Sem `--mostrar`, ele roda escondido (headless), igual.
+
+#### 🅰️ Modo automático simples (sem navegador) — mais leve
 ```bash
 python3 zayn_by_gloss.py vigiar
 ```
@@ -37,13 +55,16 @@ Toda vez que sair uma matéria nova, faça **UMA** destas:
   ```bash
   python3 zayn_by_gloss.py url "https://hugogloss.uol.com.br/a-materia-nova/"
   ```
-- Ou **copiando o texto** da matéria (mais garantido):
-  ```bash
-  python3 zayn_by_gloss.py texto "cole aqui o texto da matéria, incluindo a #Hashtag"
-  ```
+#### ⌨️ Modo à prova de TUDO — digite a música que você LÊ na tela
+Se nada mais funcionar (site bloqueia cópia **e** acesso automático), basta
+olhar a hashtag na matéria e digitar o nome:
+```bash
+python3 zayn_by_gloss.py musica "Pillowtalk"
+```
+Ele valida contra o catálogo e, se você errar a grafia, sugere a correção.
 
-> No modo manual, a **ordem** é a ordem em que você processar as matérias.
-> Processe-as **na mesma ordem em que forem publicadas** no site.
+> Em qualquer modo manual, a **ordem** é a ordem em que você processar as
+> matérias. Processe-as na mesma ordem em que forem publicadas no site.
 
 ### 3. Ver o resultado parcial a qualquer momento
 ```bash

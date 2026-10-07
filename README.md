@@ -7,6 +7,8 @@ achar as **6 músicas na ordem exata de publicação**. Este robô faz isso.
 
 ## O que ele faz
 
+- **Modo visual** (`zayn_visual.py`): abre um navegador real e **lê a tela como um
+  humano**, contornando o bloqueio de cópia (Ctrl+C) do site.
 - **Vigia o site** sozinho (ou funciona manualmente, caso o site bloqueie bots).
 - Procura hashtags nas matérias e **reconhece a música** comparando com uma
   **discografia ampla do Zayn** (de *Mind of Mine* a *Konnakol*, 2026).
@@ -31,7 +33,8 @@ Quando achar as 6, ele mostra a **sequência final** pronta para o formulário.
 
 ## Arquivos
 
-- `zayn_by_gloss.py` — o robô (vigiar / url / texto / status / reset).
+- `zayn_visual.py` — **robô visual** (navegador real, lê a tela mesmo com cópia bloqueada).
+- `zayn_by_gloss.py` — robô base (vigiar / url / texto / musica / status / reset).
 - `musicas_zayn.py` — discografia do Zayn com variações de escrita das hashtags.
 - `COMO_USAR_AMANHA.md` — passo a passo para o dia do concurso.
 
