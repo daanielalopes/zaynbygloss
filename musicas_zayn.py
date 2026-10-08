@@ -120,7 +120,10 @@ MUSICAS = [
     {"oficial": "Still Got Time", "aliases": ["still got time feat psb"]},
     {"oficial": "A Whole New World", "aliases": ["a whole new world end title"]},
     {"oficial": "Flowers", "aliases": []},
-    {"oficial": "Eyes Closed", "aliases": ["eyesclosed", "eyes closed jisoo", "eyes closed with zayn"]},
+
+    # ======================= Feats / colaborações (Zayn como artista convidado) =======================
+    # Importante: o concurso pode esconder tambem FEATS do Zayn (ex.: #EyesClosed, #HeavenBaby).
+    {"oficial": "Eyes Closed", "aliases": ["eyesclosed", "eyes closed jisoo", "eyes closed jisoo zayn", "eyes closed with zayn", "eyes closed feat zayn"]},
     {"oficial": "Heaven Baby", "aliases": ["heavenbaby", "heaven baby ayra starr", "heaven baby feat zayn"]},
     {"oficial": "Cruel", "aliases": ["cruel feat zayn", "cruel snakehips"]},
     {"oficial": "Dusk Till Dawn (Radio Edit)", "aliases": ["dusk till dawn radio edit"]},
@@ -128,4 +131,9 @@ MUSICAS = [
     {"oficial": "Entertainer (Remix)", "aliases": ["entertainer remix"]},
     {"oficial": "Back to Sleep (Remix)", "aliases": ["back to sleep remix", "back to sleep"]},
     {"oficial": "Melt", "aliases": []},
+    {"oficial": "Taste (Make It Shake)", "aliases": ["taste", "make it shake", "taste make it shake"]},
+    {"oficial": "Love Like This", "aliases": ["lovelikethis"]},
+    {"oficial": "You Are the Reason", "aliases": ["you are the reason duet", "youarethereason"]},
+    {"oficial": "Boundaries", "aliases": []},
+    {"oficial": "Who", "aliases": []},
 ]
