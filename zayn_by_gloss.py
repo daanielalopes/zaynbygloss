@@ -133,6 +133,22 @@ def achar_musicas_em_texto(texto: str, sem_hashtag: bool = False) -> tuple[list[
             if etiqueta not in suspeitas:
                 suspeitas.append(etiqueta)
 
+    # 2ª passada (robusta): o concurso às vezes escreve o título COM apóstrofo e
+    # espaços (ex.: "#iT's YoU"), o que a regex acima corta no apóstrofo. Aqui,
+    # para cada "#", pegamos um trecho logo depois e verificamos se ele CONTÉM
+    # algum título do catálogo (comparando pela chave normalizada, que ignora
+    # pontuação/espaço/acento). Assim "#iT's YoU" vira "itsyou" -> "It's You".
+    for match in re.finditer(r"#\s*([^\n#]{2,40})", texto):
+        trecho_norm = normalizar(match.group(1))
+        if not trecho_norm:
+            continue
+        for chave_cat, oficial in INDICE_MUSICAS.items():
+            # só títulos com chave >= 4 chars para evitar casar com ruído curto
+            if len(chave_cat) >= 4 and trecho_norm.startswith(chave_cat):
+                if oficial not in reconhecidas:
+                    reconhecidas.append(oficial)
+                break
+
     if sem_hashtag:
         # Busca títulos do catálogo escritos como texto comum, na ordem em que
         # aparecem no texto. Monta uma lista (posição, oficial) e ordena por posição.
