@@ -121,8 +121,11 @@ MUSICAS = [
     {"oficial": "A Whole New World", "aliases": ["a whole new world end title"]},
     {"oficial": "Flowers", "aliases": []},
     {"oficial": "Eyes Closed", "aliases": ["eyesclosed", "eyes closed jisoo", "eyes closed with zayn"]},
+    {"oficial": "Heaven Baby", "aliases": ["heavenbaby", "heaven baby ayra starr", "heaven baby feat zayn"]},
     {"oficial": "Cruel", "aliases": ["cruel feat zayn", "cruel snakehips"]},
     {"oficial": "Dusk Till Dawn (Radio Edit)", "aliases": ["dusk till dawn radio edit"]},
     {"oficial": "Taken", "aliases": []},
     {"oficial": "Entertainer (Remix)", "aliases": ["entertainer remix"]},
+    {"oficial": "Back to Sleep (Remix)", "aliases": ["back to sleep remix", "back to sleep"]},
+    {"oficial": "Melt", "aliases": []},
 ]
