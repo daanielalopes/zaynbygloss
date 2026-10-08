@@ -392,15 +392,24 @@ def cmd_vigiar(args: list[str]) -> int:
             # 2) abre apenas as matérias AINDA NÃO VISTAS, em paralelo (rápido)
             novas_urls = [u for u in materias if u not in prog["materias_vistas"]]
             if novas_urls:
+                print(f"           → {len(novas_urls)} matéria(s) nova(s) para ler.")
                 textos = ler_varias_rapido(novas_urls, mostrar=mostrar)
+                lidas = 0
                 for url in novas_urls:
-                    prog["materias_vistas"][url] = agora
                     texto = textos.get(url, "")
                     if not texto:
+                        # Falhou ao ler (ex.: internet oscilou): NÃO marca como vista,
+                        # para tentar de novo no próximo ciclo e não perder a matéria.
                         continue
+                    prog["materias_vistas"][url] = agora
+                    lidas += 1
                     novas_total += processar_texto(prog, texto, origem=f"visual: {url}",
                                                    link=url, verbose=True,
                                                    data_alvo=data_alvo)
+                falhas = len(novas_urls) - lidas
+                if falhas:
+                    print(f"           ⚠️  {falhas} matéria(s) falharam ao carregar; "
+                          f"vou tentar de novo no próximo ciclo.")
             salvar_progresso(prog)
             if novas_total:
                 imprimir_status(prog)
