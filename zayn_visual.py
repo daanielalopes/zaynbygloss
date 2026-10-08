@@ -395,6 +395,7 @@ def cmd_vigiar(args: list[str]) -> int:
                 print(f"           → {len(novas_urls)} matéria(s) nova(s) para ler.")
                 textos = ler_varias_rapido(novas_urls, mostrar=mostrar)
                 lidas = 0
+                achadas_no_ciclo = 0
                 for url in novas_urls:
                     texto = textos.get(url, "")
                     if not texto:
@@ -403,13 +404,21 @@ def cmd_vigiar(args: list[str]) -> int:
                         continue
                     prog["materias_vistas"][url] = agora
                     lidas += 1
-                    novas_total += processar_texto(prog, texto, origem=f"visual: {url}",
-                                                   link=url, verbose=True,
-                                                   data_alvo=data_alvo)
+                    achou = processar_texto(prog, texto, origem=f"visual: {url}",
+                                            link=url, verbose=True, data_alvo=data_alvo)
+                    novas_total += achou
+                    achadas_no_ciclo += achou
                 falhas = len(novas_urls) - lidas
                 if falhas:
                     print(f"           ⚠️  {falhas} matéria(s) falharam ao carregar; "
                           f"vou tentar de novo no próximo ciclo.")
+                # Feedback: avisa que leu as novas e se achou (ou não) música do Zayn.
+                if lidas and achadas_no_ciclo == 0:
+                    print(f"           ✔️  Li {lidas} matéria(s) nova(s): nenhuma música do Zayn nelas.")
+                elif achadas_no_ciclo:
+                    print(f"           🎵 Achei {achadas_no_ciclo} música(s) nas matérias novas!")
+            else:
+                print("           (sem matérias novas desde o último ciclo — seguindo de olho.)")
             salvar_progresso(prog)
             if novas_total:
                 imprimir_status(prog)
