@@ -120,4 +120,9 @@ MUSICAS = [
     {"oficial": "Still Got Time", "aliases": ["still got time feat psb"]},
     {"oficial": "A Whole New World", "aliases": ["a whole new world end title"]},
     {"oficial": "Flowers", "aliases": []},
+    {"oficial": "Eyes Closed", "aliases": ["eyesclosed", "eyes closed jisoo", "eyes closed with zayn"]},
+    {"oficial": "Cruel", "aliases": ["cruel feat zayn", "cruel snakehips"]},
+    {"oficial": "Dusk Till Dawn (Radio Edit)", "aliases": ["dusk till dawn radio edit"]},
+    {"oficial": "Taken", "aliases": []},
+    {"oficial": "Entertainer (Remix)", "aliases": ["entertainer remix"]},
 ]
